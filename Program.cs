@@ -44,6 +44,8 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<LevelCalculator>();
 builder.Services.AddScoped<FightService>();
 builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<CharacterService>();
+builder.Services.AddScoped<SwordService>();
 
 builder.Services.AddDbContext<StoreMonstersContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
