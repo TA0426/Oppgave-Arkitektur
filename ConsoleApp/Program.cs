@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 using var client = new HttpClient
 {
@@ -7,6 +8,44 @@ using var client = new HttpClient
 
 while (true)
 {
+
+    Console.Write("Skriv inn brukernavn: ");
+    var username = Console.ReadLine() ?? "";
+
+    Console.Write("Skriv inn passord: ");
+    var password = Console.ReadLine() ?? "";
+
+    var loginResponse = await client.PostAsJsonAsync(
+        "/auth/login",
+        new { username, password });
+
+    if (!loginResponse.IsSuccessStatusCode)
+    {
+        var error = await loginResponse.Content.ReadAsStringAsync();
+
+        Console.WriteLine(
+            $"Innlogging mislyktes. Status: {(int)loginResponse.StatusCode}");
+
+        Console.WriteLine(error);
+
+        continue;
+    }
+
+    var login = await loginResponse.Content
+        .ReadFromJsonAsync<LoginResponse>();
+
+    if (login is null)
+    {
+        Console.WriteLine("Kunne ikke lese token.");
+        continue;
+    }
+
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", login.Token);
+
+    Console.WriteLine("Innlogging vellykket.");
+    Console.WriteLine($"JWT-token: {login.Token}");
+
     Console.WriteLine("Dungeons and Dragqueens: If you die, you die!");
     Console.WriteLine();
     Console.WriteLine("1. Add monster");
@@ -15,34 +54,35 @@ while (true)
     Console.WriteLine("4. Start fight (permadeath)");
     Console.WriteLine("5. Go to camp");
     Console.WriteLine("0. Exit");
-    Console.Write("Choose: ");
+    Console.WriteLine("Choose: ");
 
-    var choice = Console.ReadLine();
+    var choice = Console.ReadKey();
 
-    if (choice == "0")
+    if (choice.KeyChar == '0')
         break;
 
-    if (choice == "1")
+    if (choice.KeyChar == '1')
     {
-        Console.Write("Monster name: ");
+        Console.WriteLine();
+        Console.WriteLine("Monster name: ");
         var name = Console.ReadLine() ?? "";
 
-        Console.Write("Quantity: ");
+        Console.WriteLine("Quantity: ");
         var quantity = int.Parse(Console.ReadLine()!);
 
-        Console.Write("Type: ");
+        Console.WriteLine("Type: ");
         var typeOfMonster = Console.ReadLine() ?? "";
 
-        Console.Write("HP: ");
+        Console.WriteLine("HP: ");
         var hp = int.Parse(Console.ReadLine()!);
 
-        Console.Write("Damage: ");
+        Console.WriteLine("Damage: ");
         var damage = int.Parse(Console.ReadLine()!);
 
-        Console.Write("XP: ");
+        Console.WriteLine("XP: ");
         var xp = int.Parse(Console.ReadLine()!);
 
-        Console.Write("Description: ");
+        Console.WriteLine("Description: ");
         var description = Console.ReadLine() ?? "";
 
         var response = await client.PostAsJsonAsync("/StoreMonsters", new
@@ -58,9 +98,10 @@ while (true)
 
         Console.WriteLine(await response.Content.ReadAsStringAsync());
     }
-    else if (choice == "2")
+    else if (choice.KeyChar == '2')
     {
-        Console.Write("Character name: ");
+        Console.WriteLine();
+        Console.WriteLine("Character name: ");
         var name = Console.ReadLine() ?? "";
 
         var response = await client.PostAsJsonAsync("/StoreCharacters", new
@@ -70,15 +111,16 @@ while (true)
 
         Console.WriteLine(await response.Content.ReadAsStringAsync());
     }
-    else if (choice == "3")
+    else if (choice.KeyChar == '3')
     {
-        Console.Write("Sword name: ");
+        Console.WriteLine();
+        Console.WriteLine("Sword name: ");
         var name = Console.ReadLine() ?? "";
 
-        Console.Write("Damage: ");
+        Console.WriteLine("Damage: ");
         var damage = int.Parse(Console.ReadLine()!);
 
-        Console.Write("Description: ");
+        Console.WriteLine("Description: ");
         var description = Console.ReadLine() ?? "";
 
         var response = await client.PostAsJsonAsync("/StoreSwords", new
@@ -90,8 +132,9 @@ while (true)
 
         Console.WriteLine(await response.Content.ReadAsStringAsync());
     }
-    else if (choice == "4")
+    else if (choice.KeyChar == '4')
     {
+        Console.WriteLine();
         var characters =
             await client.GetFromJsonAsync<List<CharacterForConsole>>(
                 "/StoreCharacters");
@@ -175,10 +218,10 @@ while (true)
                 Console.WriteLine("You lost!");
             }
         }
-        if (fightResult.Loot is not null)
-        {
-            var loot = fightResult.Loot;
+        var loot = fightResult?.Loot;
 
+        if (loot is not null)
+        {
             Console.WriteLine(
                 $"Loot found: {loot.Name} - Damage: {loot.Damage}");
 
@@ -206,8 +249,9 @@ while (true)
             Console.WriteLine("No loot this time.");
         }
     }
-    else if (choice == "5")
+    else if (choice.KeyChar == '5')
     {
+        Console.WriteLine();
         var characters =
             await client.GetFromJsonAsync<List<CharacterForConsole>>(
                 "/StoreCharacters");
@@ -277,3 +321,5 @@ Guid Id,
 string Name,
 int Damage,
 string Description);
+
+public record LoginResponse(string Token);

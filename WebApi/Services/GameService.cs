@@ -11,10 +11,12 @@ public class GameService(
 {
     public async Task<CombatResult> StartFightAsync(
         Guid characterId,
-        Guid monsterId)
+        Guid monsterId,
+        string userId)
     {
 
-        var character = await database.Characters.FindAsync(characterId);
+        var character = await database.Characters
+            .FirstOrDefaultAsync(character => character.Id == characterId && character.UserId == userId);
         if (character is null)
             throw new KeyNotFoundException("Character not found.");
 

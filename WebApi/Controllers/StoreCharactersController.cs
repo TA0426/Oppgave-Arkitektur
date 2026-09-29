@@ -4,11 +4,29 @@ using Microsoft.AspNetCore.Mvc;
 using OppgaveUkeEnModul3.Core;
 using Microsoft.EntityFrameworkCore;
 using OppgaveUkeEnModul3.WebApi.DatabaseContext;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("/[controller]")]
+[Authorize]
 public class StoreCharactersController : ControllerBase
 {
+    private string? GetUserId()
+    {
+        var authorization = Request.Headers.Authorization.ToString();
+
+        if (!authorization.StartsWith("Bearer "))
+            return null;
+
+        var token = authorization["Bearer ".Length..].Trim();
+
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+
+        return jwt.Claims.FirstOrDefault(
+            claim => claim.Type == "sub")?.Value;
+    }
     private readonly StoreMonstersContext database;
 
     public StoreCharactersController(StoreMonstersContext database)
@@ -21,8 +39,14 @@ public class StoreCharactersController : ControllerBase
     Guid characterId,
     Guid swordId)
     {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
         var character = await database.Characters
-            .FindAsync(characterId);
+            .FirstOrDefaultAsync(character => character.Id == characterId && character.UserId == userId);
+
 
         if (character is null)
             return NotFound("Character not found.");
@@ -42,15 +66,32 @@ public class StoreCharactersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<StoreCharacter>>> Get()
     {
-        var characters = await database.Characters.AsNoTracking().ToListAsync();
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var characters = await database.Characters
+            .Where(character => character.UserId == userId)
+            .AsNoTracking()
+            .ToListAsync();
+
         return Ok(characters);
     }
 
     [HttpGet("{id:guid}")]
-    public IActionResult Get(Guid id)
+    public async Task<IActionResult> Get(Guid id)
     {
-        var character = database.Characters.FirstOrDefault(
-            character => character.Id == id);
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var character = await database.Characters
+            .AsNoTracking()
+            .FirstOrDefaultAsync(character =>
+                character.Id == id &&
+                character.UserId == userId);
 
         return character is null
             ? NotFound()
@@ -60,9 +101,15 @@ public class StoreCharactersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Post(CreateCharacterDTO dto)
     {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
         var character = new StoreCharacter
         {
-            Name = dto.Name
+            Name = dto.Name,
+            UserId = userId
         };
 
         database.Characters.Add(character);
@@ -75,7 +122,14 @@ public class StoreCharactersController : ControllerBase
     [HttpPost("{id:guid}/camp")]
     public async Task<IActionResult> Camp(Guid id)
     {
-        var character = await database.Characters.FindAsync(id);
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var character = await database.Characters
+            .FirstOrDefaultAsync(character => character.Id == id && character.UserId == userId);
+
 
         if (character is null)
             return NotFound("Character not found.");
