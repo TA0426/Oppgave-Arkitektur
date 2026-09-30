@@ -5,6 +5,7 @@ using OppgaveUkeEnModul3.Core;
 using OppgaveUkeEnModul3.Core.Services;
 using OppgaveUkeEnModul3.WebApi.DatabaseContext;
 
+
 public class GameService(
     StoreMonstersContext database,
     FightService fightService)
@@ -17,8 +18,11 @@ public class GameService(
 
         var character = await database.Characters
             .FirstOrDefaultAsync(character => character.Id == characterId && character.UserId == userId);
+
+
         if (character is null)
             throw new KeyNotFoundException("Character not found.");
+
 
         var monster = await database.StoreMonsters.FindAsync(monsterId);
         if (monster is null)
