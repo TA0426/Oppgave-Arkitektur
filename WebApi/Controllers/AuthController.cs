@@ -8,6 +8,15 @@ using Microsoft.AspNetCore.Authorization;
 namespace OppgaveUkeEnModul3.WebApi.Controllers;
 
 
+// For fremtidig forbedring kunne jeg lagt inn adminprivilegier med 403 forbidden feil hvis en vanlig bruker prøver å DELETE.
+/* [Authorize(Roles = "Admin")]
+[HttpDelete("{id:guid}")]
+public async Task<IActionResult> Delete(Guid id)
+{
+    ...
+} */
+
+
 
 [ApiController]
 [Route("auth")]
