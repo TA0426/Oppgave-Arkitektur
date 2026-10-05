@@ -85,18 +85,31 @@ while (true)
         Console.WriteLine("Description: ");
         var description = Console.ReadLine() ?? "";
 
-        var response = await client.PostAsJsonAsync("/StoreMonsters", new
-        {
-            name,
-            quantity,
-            typeOfMonster,
-            hp,
-            damage,
-            XPReward = xp,
-            description
-        });
+        var response = await client.PostAsJsonAsync(
+            "/StoreMonsters",
+            new
+            {
+                name,
+                quantity,
+                typeOfMonster,
+                hp,
+                damage,
+                XPReward = xp,
+                description
+            });
 
-        Console.WriteLine(await response.Content.ReadAsStringAsync());
+        var message = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)response.StatusCode}: {message}");
+
+            continue;
+        }
+
+        Console.WriteLine("Monster created:");
+        Console.WriteLine(message);
     }
     else if (choice.KeyChar == '2')
     {
@@ -108,8 +121,18 @@ while (true)
         {
             name
         });
+        var message = await response.Content.ReadAsStringAsync();
 
-        Console.WriteLine(await response.Content.ReadAsStringAsync());
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)response.StatusCode}: {message}");
+
+            continue;
+        }
+
+        Console.WriteLine("Character created:");
+        Console.WriteLine(message);
     }
     else if (choice.KeyChar == '3')
     {
@@ -135,13 +158,38 @@ while (true)
     else if (choice.KeyChar == '4')
     {
         Console.WriteLine();
+
+        var characterResponse =
+            await client.GetAsync("/StoreCharacters");
+
+        if (!characterResponse.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)characterResponse.StatusCode}: " +
+                await characterResponse.Content.ReadAsStringAsync());
+
+            continue;
+        }
+
         var characters =
-            await client.GetFromJsonAsync<List<CharacterForConsole>>(
-                "/StoreCharacters");
+            await characterResponse.Content.ReadFromJsonAsync<
+                List<CharacterForConsole>>();
+
+        var monsterResponse =
+            await client.GetAsync("/StoreMonsters");
+
+        if (!monsterResponse.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)monsterResponse.StatusCode}: " +
+                await monsterResponse.Content.ReadAsStringAsync());
+
+            continue;
+        }
 
         var monsters =
-            await client.GetFromJsonAsync<List<MonsterForConsole>>(
-                "/StoreMonsters");
+            await monsterResponse.Content.ReadFromJsonAsync<
+                List<MonsterForConsole>>();
 
         if (characters is null || characters.Count == 0)
         {
@@ -181,44 +229,60 @@ while (true)
             monsterId = monsters[monsterChoice - 1].Id
         };
 
-        var response = await client.PostAsJsonAsync("/Fight", body);
+        var fightResponse =
+            await client.PostAsJsonAsync("/Fight", body);
+
+        if (!fightResponse.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)fightResponse.StatusCode}: " +
+                await fightResponse.Content.ReadAsStringAsync());
+
+            continue;
+        }
 
         var fightResult =
-            await response.Content.ReadFromJsonAsync<CombatResultForConsole>();
-        if (fightResult is not null)
+            await fightResponse.Content.ReadFromJsonAsync<
+                CombatResultForConsole>();
+
+        if (fightResult is null)
         {
-            foreach (var logLine in fightResult.BattleLog)
-            {
-                Console.WriteLine(logLine);
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("===== FIGHT RESULT =====");
-            Console.WriteLine(
-    $"Enemies before fight: {fightResult.EnemiesBeforeFight}");
-            Console.WriteLine(
-                $"Your HP: {fightResult.CharacterHpAfterFight}");
-            Console.WriteLine(
-                $"Monster HP: {fightResult.MonsterHpAfterFight}");
-            Console.WriteLine(
-                $"XP gained: {fightResult.XpGained}");
-            Console.WriteLine(
-                $"Your level: {fightResult.NewLevel}");
-
-
-            Console.WriteLine(
-                $"Enemies after fight: {fightResult.EnemiesAfterFight}");
-
-            if (fightResult.CharacterWon)
-            {
-                Console.WriteLine("You won!");
-            }
-            else
-            {
-                Console.WriteLine("You lost!");
-            }
+            Console.WriteLine("Kunne ikke lese fight-resultatet.");
+            continue;
         }
-        var loot = fightResult?.Loot;
+
+        foreach (var logLine in fightResult.BattleLog)
+        {
+            Console.WriteLine(logLine);
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("===== FIGHT RESULT =====");
+
+        Console.WriteLine(
+            $"Enemies before fight: {fightResult.EnemiesBeforeFight}");
+
+        Console.WriteLine(
+            $"Your HP: {fightResult.CharacterHpAfterFight}");
+
+        Console.WriteLine(
+            $"Monster HP: {fightResult.MonsterHpAfterFight}");
+
+        Console.WriteLine(
+            $"XP gained: {fightResult.XpGained}");
+
+        Console.WriteLine(
+            $"Your level: {fightResult.NewLevel}");
+
+        Console.WriteLine(
+            $"Enemies after fight: {fightResult.EnemiesAfterFight}");
+
+        Console.WriteLine(
+            fightResult.CharacterWon
+                ? "You won!"
+                : "You lost!");
+
+        var loot = fightResult.Loot;
 
         if (loot is not null)
         {
@@ -252,9 +316,22 @@ while (true)
     else if (choice.KeyChar == '5')
     {
         Console.WriteLine();
+        var response = await client.GetAsync("/StoreCharacters");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)response.StatusCode}: " +
+                await response.Content.ReadAsStringAsync());
+
+            continue;
+        }
+
         var characters =
-            await client.GetFromJsonAsync<List<CharacterForConsole>>(
-                "/StoreCharacters");
+            await response.Content.ReadFromJsonAsync<
+                List<CharacterForConsole>>();
+
+
 
         if (characters is null || characters.Count == 0)
         {
@@ -274,12 +351,22 @@ while (true)
         var characterId =
             characters[characterChoice - 1].Id;
 
-        var response = await client.PostAsync(
+        var campResponse = await client.PostAsync(
             $"/StoreCharacters/{characterId}/camp",
             null);
 
-        Console.WriteLine(
-            await response.Content.ReadAsStringAsync());
+        var message =
+            await campResponse.Content.ReadAsStringAsync();
+
+        if (!campResponse.IsSuccessStatusCode)
+        {
+            Console.WriteLine(
+                $"Feil {(int)campResponse.StatusCode}: {message}");
+
+            continue;
+        }
+
+        Console.WriteLine(message);
     }
 }
 
