@@ -21,7 +21,16 @@ public class StoreCharactersController(CharacterService service) : ControllerBas
 
         var characters = await service.GetAsync(userId);
 
-        return Ok(characters);
+        var response = characters
+            .Select(character => new CharacterResponse(
+                character.Id,
+                character.Name,
+                character.Hp,
+                character.Damage,
+                character.Level))
+            .ToList();
+
+        return Ok(response);
     }
 
     [HttpGet("{id:guid}")]
@@ -35,9 +44,17 @@ public class StoreCharactersController(CharacterService service) : ControllerBas
         var character = await service.GetAsync(id, userId);
 
         if (character is null)
-            return NotFound();
+            return NotFound(new
+            {
+                error = "Character not found."
+            });
 
-        return Ok(character);
+        return Ok(new CharacterResponse(
+            character.Id,
+            character.Name,
+            character.Hp,
+            character.Damage,
+            character.Level));
     }
 
     [HttpPost]
@@ -50,9 +67,16 @@ public class StoreCharactersController(CharacterService service) : ControllerBas
 
         var character = await service.CreateAsync(dto, userId);
 
+        var response = new CharacterResponse(
+            character.Id,
+            character.Name,
+            character.Hp,
+            character.Damage,
+            character.Level);
+
         return Created(
             $"/StoreCharacters/{character.Id}",
-            character);
+            response);
     }
 
     [HttpPut("{characterId:guid}/equipment/{swordId:guid}")]

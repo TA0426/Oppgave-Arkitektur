@@ -24,7 +24,12 @@ public class StoreSwordsController(
         var sword = await service.GetAsync(id);
 
         if (sword is null)
-            return NotFound();
+        {
+            return NotFound(new
+            {
+                error = "Sword not found."
+            });
+        }
 
         return Ok(sword);
     }
@@ -50,5 +55,6 @@ public class StoreSwordsController(
             return NotFound();
 
         return NoContent();
+
     }
 }
